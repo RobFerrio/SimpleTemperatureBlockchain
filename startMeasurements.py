@@ -1,6 +1,7 @@
 import json
 import time
 import os
+import datetime
 
 from dotenv import load_dotenv
 from eth_account import Account
@@ -56,7 +57,11 @@ class ContractManager:
         return self.contract.get_function_by_name('storeMeasurement')
 
     def print_measurements(self):
-        print(self.get_measurements_func().call())
+        x = self.contract.caller.getMeasurements()
+        i = 0
+        for m in x:
+            i+=1
+            print(i,": ", "temp: ", m[0], "time: ", datetime.datetime.fromtimestamp(m[1]))
 
     def store_measurement(self, value, time):
         store_func = self.store_measurement_func()
@@ -64,13 +69,15 @@ class ContractManager:
         print("Measurement stored -> hash: ", hash_tx)
 
 
+env_manager = EnvironmentManager()
+
 if not w3.isConnected():
     raise Exception(f'Cannot connect to web3')
 
-env_manager = EnvironmentManager()
 private_key = env_manager.getenv_or_raise('SIGNER_LOCAL_PRIVATE_KEY')
 address = env_manager.getenv_or_raise('SIGNER_LOCAL_ADDRESS')
-_account_manager = AccountManager(private_key=private_key, address=address)
+checksum = w3.toChecksumAddress(address)
+_account_manager = AccountManager(private_key=private_key, address=checksum)
 contract_manager = ContractManager(_account_manager)
 hub = SensorHub()
 
@@ -79,8 +86,8 @@ while n<100:
     n += 1
     temp = hub.get_off_board_temperature()
     now = int(time.time())
-    print('temp: ', temp, 'time: ', now)
+    print('temp: ', temp, 'time: ', datetime.datetime.fromtimestamp(now))
     contract_manager.store_measurement(temp, now)
-    time.sleep(1)
+    #time.sleep(1)
 
 contract_manager.print_measurements()
